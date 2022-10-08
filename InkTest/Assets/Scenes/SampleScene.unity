@@ -423,14 +423,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   textComponent: {fileID: 1998945406}
-  Wave: 0
-  WaveSize: 0.05
-  WaveTime: 3
+  WaveSize: 0.03
+  WaveTime: 4
   XWeight: 2000
   Rainbow: 0
   XColorWeight: 0.47
   TimeWeight: 1.3
-  Shake: 0
+  referenceColor: {r: 0.39215687, g: 0.39215687, b: 0.39215687, a: 0.39215687}
   MaxShake: 15.33
 --- !u!114 &1998945406
 MonoBehaviour:
@@ -452,7 +451,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: <color=#202323>aaaa<color=#3h1><k>HE<k>aaaa<k>HELLO<k>aaaa<k>BRUH<k>aaaaaa
+  m_text: <r>The<w> quick <r><k>brown<w> fox <k>jumped
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6afd686cf89336147ab3b78708589251, type: 2}
   m_sharedMaterial: {fileID: 6096655776120383797, guid: 6afd686cf89336147ab3b78708589251, type: 2}

@@ -11,16 +11,17 @@ public class TextAnimator : MonoBehaviour
 	//Effects =====================================================================
 	//The various effects, and their parameters and relevant variables
 	[Header("Waving")]
-	[SerializeField] bool Wave = false;
 	[SerializeField] float WaveSize = 1f;
 	[SerializeField] float WaveTime = 1f;
 	[SerializeField] float XWeight = 1f; // in 1/1000ths
+	private int[] waveArray;
 	[Header("Rainbow")]
 	[SerializeField] bool Rainbow = false;
 	[SerializeField] float XColorWeight = 1f;
 	[SerializeField] float TimeWeight = 1f;
+	[SerializeField] Color referenceColor;
+	private int[] rainbowArray;
 	[Header("Shaking")]
-	[SerializeField] bool Shake = false;
 	[SerializeField] float MaxShake = 1f;
 	private int[] shakeArray;
 
@@ -69,7 +70,9 @@ public class TextAnimator : MonoBehaviour
 	};
 	
 	string[] customRichText = new string[]{
-		"k"
+		"k",
+		"w",
+		"r"
 	};
 	
 	
@@ -77,7 +80,6 @@ public class TextAnimator : MonoBehaviour
 	
 	
 	void Start(){
-		//StartCoroutine("EffectRainbowCoroutine");
 		ReScan();
 	}
     void Update()
@@ -87,22 +89,13 @@ public class TextAnimator : MonoBehaviour
 	    textComponent.ForceMeshUpdate();
 		var textInfo = textComponent.textInfo;
 		
-		if(Input.GetKeyDown(KeyCode.Space)){
-			Debug.Log(textComponent.text);
-			Debug.Log(textComponent.text.Length);
-			Debug.Log(textComponent.text.ToCharArray()[0]);
-		}
-		if(Input.GetKeyDown(KeyCode.C)){
-			ReScan();
-		}
 		
 			
 		
 		EffectShake(textInfo);
-		if(Wave)
-			EffectWave(textInfo);
-		if(Rainbow)
-			EffectRainbow();
+		EffectWave(textInfo);
+		EffectRainbow(textInfo);
+		//EffectRainbow();
 	    
 	    for (int i =0; i<textInfo.meshInfo.Length;++i){
 	    	var meshInfo = textInfo.meshInfo[i];
@@ -171,35 +164,121 @@ public class TextAnimator : MonoBehaviour
 		shakeArray = new int[onlyCharacters.Length];
 		int charIndex = 0; //the "true" location of the characters 
 		
+		bool foundOutsideDelimiter = false;
 		for(int i = 0; i<scrubbedText.Length;i++){
 			if(i+2 <= scrubbedText.Length && scrubbedText.Substring(i,2).Equals("<k")){
 				int start = FindNext(scrubbedText.Substring(i+2), ">") + 3 + i;
 				int end = FindNext(scrubbedText.Substring(i+2), "<k>") + 1 + i;
+				bool foundInsideDelimiter = false;
 				for(int a = start; a<=end;a++){
+					if(scrubbedText.ToCharArray()[a].Equals('>') || scrubbedText.ToCharArray()[a].Equals('<')){
+						foundInsideDelimiter = !foundInsideDelimiter;
+						continue;
+					}
+					if(foundInsideDelimiter)
+						continue;
 					shakeArray[charIndex] = 1;
+					charIndex++;
+					
+				}
+				i = end+3;
+				continue;
+			}
+			if(scrubbedText.ToCharArray()[i].Equals('>') || scrubbedText.ToCharArray()[i].Equals('<')){
+				foundOutsideDelimiter = !foundOutsideDelimiter;
+				continue;
+			}
+			if(foundOutsideDelimiter)
+				continue;
+			charIndex++;
+		}
+		
+		//Wave Effect <w> ===================================
+		waveArray = new int[onlyCharacters.Length];
+		charIndex = 0; //the "true" location of the characters
+		
+		foundOutsideDelimiter = false;
+		for(int i = 0; i<scrubbedText.Length;i++){
+			if(i+2 <= scrubbedText.Length && scrubbedText.Substring(i,2).Equals("<w")){
+				int start = FindNext(scrubbedText.Substring(i+2), ">") + 3 + i;
+				int end = FindNext(scrubbedText.Substring(i+2), "<w>") + 1 + i;
+				bool foundInsideDelimiter = false;
+				for(int a = start; a<=end;a++){
+					if(scrubbedText.ToCharArray()[a].Equals('>') || scrubbedText.ToCharArray()[a].Equals('<')){
+						foundInsideDelimiter = !foundInsideDelimiter;
+						continue;
+					}
+					if(foundInsideDelimiter)
+						continue;
+					waveArray[charIndex] = 1;
 					charIndex++;
 				}
 				i = end+3;
 				continue;
 			}
+			if(scrubbedText.ToCharArray()[i].Equals('>') || scrubbedText.ToCharArray()[i].Equals('<')){
+				foundOutsideDelimiter = !foundOutsideDelimiter;
+				continue;
+			}
+			if(foundOutsideDelimiter)
+				continue;
 			charIndex++;
 		}
-		string bruh = "";
-		foreach (var item in shakeArray) {
-			bruh += item;
-			bruh +=	", ";
+
+		//Rainbow Effect <r> ========================================
+		rainbowArray = new int[onlyCharacters.Length];
+		charIndex = 0; //the "true" location of the characters
+		
+		foundOutsideDelimiter = false;
+		for(int i = 0; i<scrubbedText.Length;i++){
+			if(i+2 <= scrubbedText.Length && scrubbedText.Substring(i,2).Equals("<r")){
+				int start = FindNext(scrubbedText.Substring(i+2), ">") + 3 + i;
+				int end = FindNext(scrubbedText.Substring(i+2), "<r>") + 1 + i;
+				bool foundInsideDelimiter = false;
+				for(int a = start; a<=end;a++){
+					if(scrubbedText.ToCharArray()[a].Equals('>') || scrubbedText.ToCharArray()[a].Equals('<')){
+						foundInsideDelimiter = !foundInsideDelimiter;
+						continue;
+					}
+					if(foundInsideDelimiter)
+						continue;
+					if(scrubbedText.ToCharArray()[a].Equals(" "))
+						rainbowArray[charIndex] = -1;
+					else
+						rainbowArray[charIndex] = 1;
+					charIndex++;
+				}
+				i = end+3;
+				continue;
+			}
+			if(scrubbedText.ToCharArray()[i].Equals('>') || scrubbedText.ToCharArray()[i].Equals('<')){
+				foundOutsideDelimiter = !foundOutsideDelimiter;
+				continue;
+			}
+			if(foundOutsideDelimiter)
+				continue;
+			charIndex++;
 		}
+		
 	}
+	
+	//ReScan Helper Functions =======================================================
+	
 	private int FindNext(string n, string x){
 		return n.IndexOf(x);
 	}
+	
+	//Effect Functions ===============================================================
+	
 	private void EffectWave(TMP_TextInfo textInfo){
 		for(int i = 0; i<textInfo.characterCount; ++i){
 			var charInfo = textInfo.characterInfo[i];
 			if(!charInfo.isVisible){
 				continue;
 			}
-	    	
+			if(waveArray[i] == 0){
+				continue;
+			}	
 			var verts = textInfo.meshInfo[charInfo.materialReferenceIndex].vertices;
 			for(int j = 0; j<4; ++j){	    	
 				var orig = verts[charInfo.vertexIndex + j];
@@ -209,7 +288,6 @@ public class TextAnimator : MonoBehaviour
 	}
 	private void EffectShake(TMP_TextInfo textInfo){
 		for(int i = 0; i<textInfo.characterCount; ++i){
-
 			var charInfo = textInfo.characterInfo[i];
 			if(!charInfo.isVisible){
 				continue;
@@ -225,15 +303,62 @@ public class TextAnimator : MonoBehaviour
 			}
 		}
 	}
-	private void EffectRainbow(){
+	private void EffectRainbow(TMP_TextInfo textInfo){
 		Vector3[] vertices = textComponent.mesh.vertices;
 		Color[] colors = new Color[vertices.Length];
-
+		
+		for(int i = 0;i <colors.Length;i++){
+			colors[i] = referenceColor;
+		}
+		
+		int vertIndex = 0;
+		for(int i = 0; i<textInfo.characterCount; ++i){
+			var charInfo = textInfo.characterInfo[i];
+			if(!charInfo.isVisible){
+				continue;
+			}
+			if(rainbowArray[i] == 0){
+				continue;
+			}			
+			var verts = textInfo.meshInfo[charInfo.materialReferenceIndex].vertices;
+			for(int j = 0; j<4; ++j){
+				float hue = Mathf.Lerp(0,1,0.5f*(Mathf.Sin(Time.time*TimeWeight + vertices[i].x*XColorWeight)+1));
+				colors[vertIndex] = Color.HSVToRGB(hue, 1,1);
+				vertIndex++;
+			}
+		}
+		
 		for (int i = 0; i < vertices.Length; i++){
+			if(colors[i].Equals(referenceColor)){
+				colors[i] = textComponent.mesh.colors[i];
+			}
+		}
+		
+		textComponent.mesh.colors = colors;
+	}
+	
+	
+	
+	
+	
+	//UNUSED FUNCTIONS ==========================================================
+	private void EffectRainbowLegacy(){
+		Vector3[] vertices = textComponent.mesh.vertices;
+		Color[] colors = new Color[vertices.Length];
+		int currentChar = 0;
+		for (int i = 0; i < vertices.Length; i++){
+			Debug.Log(currentChar);
+			if(i %4 == 0 && i != 0 )
+				currentChar++;
+			if(rainbowArray[currentChar] != 1){
+				continue;
+			}
+
 			float hue = Mathf.Lerp(0,1,0.5f*(Mathf.Sin(Time.time*TimeWeight + vertices[i].x*XColorWeight)+1));
 			colors[i] = Color.HSVToRGB(hue, 1,1);
-			//colors[i] = Color.Lerp(Color.red, Color.green, Mathf.Sin(Time.time*TimeWeight + vertices[i].x*XColorWeight));
+			
 		}
 		textComponent.mesh.colors = colors;
 	}
+
 }
