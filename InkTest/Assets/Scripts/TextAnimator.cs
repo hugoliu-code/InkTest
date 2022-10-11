@@ -24,24 +24,29 @@ public class TextAnimator : MonoBehaviour
 	//Effects =============================================================================================
 	//The various effects, and their parameters and relevant variables
 	[Header("Waving")]
-	[SerializeField] float WaveSize = 1f; //The size of the wave vertically
-	[SerializeField] float WaveTime = 1f; //The speec of the wave
-	[SerializeField] float XWaveWeight = 1f; //How many waves in 1/100ths
+	[SerializeField] float WaveSize = 0.03f; //The size of the wave vertically
+	[SerializeField] float WaveTime = 4f; //The speed of the wave
+	[SerializeField] float XWaveWeight = 30f; //How many waves in 1/10ths
 	private int[] waveArray; //Array with same size as the non-richtext characters. 1 for apply effect, 0 by default.
 	
 	
 	[Header("Rainbow")]
-	[SerializeField] float XColorWeight = 1f; //The concentration of colors (how wide the color bands will be)
-	[SerializeField] float TimeWeight = 1f; //how fast the colors will travel
+	[SerializeField] float XColorWeight = 0.5f; //The concentration of colors (how wide the color bands will be)
+	[SerializeField] float TimeWeight = 1.3f; //how fast the colors will travel
 	[SerializeField] Color referenceColor; //A color used for reference in the effect function. Preferably an obscure color.
 	private int[] rainbowArray; //Array with same size as the non-richtext characters. 1 for apply effect, 0 by default.
 	
 	
 	[Header("Shaking")]
-	[SerializeField] float MaxShake = 1f; //How intense the shake will be
+	[SerializeField] float MaxShake = 15f; //How intense the shake will be
+	[SerializeField] int ShakeSpeed = 1; //How many frames between each shake
+	private int shakeFrame = 0;
 	private int[] shakeArray;//Array with same size as the non-richtext characters. 1 for apply effect, 0 by default.
 
-
+	
+	private string realText; //the text with no rich text
+	private int[] revealArray;
+	private Color[] originalColors;
 
 
 
@@ -50,6 +55,7 @@ public class TextAnimator : MonoBehaviour
 	string[] richText = new string[] //All native unity richtexts
 	{
 		"color",
+		"/color",
 		"alpha",
 		"align",
 		"allcaps",
@@ -104,7 +110,11 @@ public class TextAnimator : MonoBehaviour
 	//Native Functions =============================================================================================
 	
 	void Start(){
+
 		ReScan();
+		textComponent.ForceMeshUpdate();
+		StartCoroutine(RevealCharacterCoroutine());
+
 	}
 	
     void Update()
@@ -120,10 +130,17 @@ public class TextAnimator : MonoBehaviour
 		var textInfo = textComponent.textInfo;
 		
 			
+			
+			
+
+		RevealCharacters(textInfo);
+			
+			
+			
 		//All Effect Functions
 		EffectShake(textInfo);
 		EffectWave(textInfo);
-		EffectRainbow(textInfo);
+		//EffectRainbow(textInfo);
 		
 	    
 		//For specific functions, this will update the position of the mesh (shake and wave, which affects verticies)
@@ -157,7 +174,6 @@ public class TextAnimator : MonoBehaviour
 				scrubbedText += originalTextArray[i];
 		}
 		
-		
 		//Creates "only characters" which has no custom or native richtext. Used to set length of the effect arrays.
 		string onlyCharacters = "";
 		for(int i = 0; i<scrubbedText.Length;i++){
@@ -171,9 +187,10 @@ public class TextAnimator : MonoBehaviour
 			}
 			
 			if(!foundRichText)
-				onlyCharacters += originalTextArray[i];
+				onlyCharacters += scrubbedText.ToCharArray()[i];
 		}
-		
+		// Set global reference for reveal coroutine
+		realText = onlyCharacters;
 		
 		//Only has unity native richtext. Creates the final text that will be read by textmeshpro (TMP needs the native richtext, but should ignore the custom, which is removed)
 		string finalText = "";
@@ -190,7 +207,6 @@ public class TextAnimator : MonoBehaviour
 			if(!foundRichText)
 				finalText += originalTextArray[i];
 		}
-		
 		
 		//Sets textMeshPro text
 		textComponent.text = finalText;
@@ -292,7 +308,7 @@ public class TextAnimator : MonoBehaviour
 					}
 					if(foundInsideDelimiter)
 						continue;
-					if(scrubbedText.ToCharArray()[a].Equals(" "))
+					if(char.IsWhiteSpace(scrubbedText.ToCharArray()[a]))
 						rainbowArray[charIndex] = -1;
 					else
 						rainbowArray[charIndex] = 1;
@@ -320,6 +336,45 @@ public class TextAnimator : MonoBehaviour
 	}
 	
 	
+	//Reveal Function ===============================================================
+	IEnumerator RevealCharacterCoroutine(){
+		//Debug.Log(textComponent.text);
+		Vector3[] vertices = textComponent.mesh.vertices;
+		originalColors = textComponent.mesh.colors;
+		revealArray = new int[vertices.Length];
+
+		int currentVertex = 0;
+		for(int i = 0;i<realText.Length;i++){
+			yield return new WaitForSeconds(0.1f);
+			if(char.IsWhiteSpace(realText.ToCharArray()[i])){
+				//Debug.Log(i);
+				continue;
+				
+				
+			}
+			for(int a = 0; a < 4; a++){
+				//Debug.Log(revealArray.Length + " : " + currentVertex);
+				revealArray[currentVertex] = 1;
+				currentVertex++;
+			}
+		}
+	}
+	
+	private void RevealCharacters(TMP_TextInfo textInfo){
+		Vector3[] vertices = textComponent.mesh.vertices;
+		Color[] setColors = new Color[vertices.Length];
+		for(int i = 0; i < vertices.Length; i++){
+			if(revealArray[i] == 0){
+				setColors[i] = Color.clear;
+			}
+			else{
+				setColors[i] = originalColors[i];
+			}
+		}
+		textComponent.mesh.colors = setColors;
+	}
+	
+	
 	//Effect Functions ===============================================================
 	
 	private void EffectWave(TMP_TextInfo textInfo){
@@ -335,7 +390,7 @@ public class TextAnimator : MonoBehaviour
 			var verts = textInfo.meshInfo[charInfo.materialReferenceIndex].vertices;
 			for(int j = 0; j<4; ++j){	    	
 				var orig = verts[charInfo.vertexIndex + j];
-				verts[charInfo.vertexIndex + j] = orig + new Vector3(0, Mathf.Sin(Time.time*WaveTime + orig.x*XWaveWeight*0.01f)*WaveSize*textComponent.fontSize,0);
+				verts[charInfo.vertexIndex + j] = orig + new Vector3(0, Mathf.Sin(Time.time*WaveTime + orig.x*XWaveWeight*0.1f)*WaveSize*textComponent.fontSize,0);
 			}
 		}
 	}
@@ -343,6 +398,17 @@ public class TextAnimator : MonoBehaviour
 	
 	private void EffectShake(TMP_TextInfo textInfo){
 		//Uses randomly generated numbers to displace location of verticies
+		
+		//Check if this frame should shake
+		shakeFrame++;
+		if(shakeFrame == ShakeSpeed){
+			shakeFrame = 0;
+		}
+		else{
+			return;
+		}
+		
+		
 		for(int i = 0; i<textInfo.characterCount; ++i){
 			var charInfo = textInfo.characterInfo[i];
 			if(!charInfo.isVisible){
