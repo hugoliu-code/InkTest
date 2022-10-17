@@ -42,7 +42,9 @@ public class TextAnimator : MonoBehaviour
 	[SerializeField] int ShakeSpeed = 1; //How many frames between each shake
 	private int shakeFrame = 0;
 	private int[] shakeArray;//Array with same size as the non-richtext characters. 1 for apply effect, 0 by default.
-
+	
+	[Header("Time Wait")]
+	private float[] waitArray; //Array of times to wait at each character; Used in the coroutine
 	
 	private string realText; //the text with no rich text
 	private int[] revealArray;
@@ -57,6 +59,7 @@ public class TextAnimator : MonoBehaviour
 		"color",
 		"/color",
 		"alpha",
+		"/alpha",
 		"align",
 		"allcaps",
 		"b",
@@ -80,6 +83,7 @@ public class TextAnimator : MonoBehaviour
 		"pos",
 		"rotate",
 		"s",
+		"/s",
 		"size",
 		"smallcaps",
 		"space",
@@ -98,7 +102,8 @@ public class TextAnimator : MonoBehaviour
 	string[] customRichText = new string[]{ //richtexts supported in this script
 		"k", //shake
 		"w", //wave
-		"r" //rainbow
+		"r", //rainbow
+		"t" //time
 	};
 	
 	
@@ -140,7 +145,7 @@ public class TextAnimator : MonoBehaviour
 		//All Effect Functions
 		EffectShake(textInfo);
 		EffectWave(textInfo);
-		//EffectRainbow(textInfo);
+		EffectRainbow(textInfo);
 		
 	    
 		//For specific functions, this will update the position of the mesh (shake and wave, which affects verticies)
@@ -219,6 +224,32 @@ public class TextAnimator : MonoBehaviour
 		//Variables used by multiple effect parsers
 		int charIndex;
 		bool foundOutsideDelimiter;
+		
+		//Time to Wait Effect Parser <t> ================================================================================
+		waitArray = new float[onlyCharacters.Length];
+		charIndex = 0;
+		foundOutsideDelimiter = false;
+		
+		for(int i = 0;i<scrubbedText.Length;i++){
+			if(i+2 <= scrubbedText.Length && scrubbedText.Substring(i,2).Equals("<t")){
+				int end = FindNext(scrubbedText.Substring(i+2), ">") + 3 + i; //the end of the <t=...>
+				float parameter = float.Parse(scrubbedText.Substring(i+3,end-i-4)); //The parameter enclosed, determining how long to wait before revealing a character
+				waitArray[charIndex] = parameter; //Set time for character at charIndex to wait
+
+				i = end;
+			}
+			
+			
+			
+			if(scrubbedText.ToCharArray()[i].Equals('>') || scrubbedText.ToCharArray()[i].Equals('<')){
+				foundOutsideDelimiter = !foundOutsideDelimiter;
+				continue;
+			}
+			if(foundOutsideDelimiter)
+				continue;
+		
+			charIndex++;
+		}
 		
 		
 		//Shake Effect Parser <k> ======================================================================================
@@ -335,25 +366,26 @@ public class TextAnimator : MonoBehaviour
 		return n.IndexOf(x);
 	}
 	
-	
 	//Reveal Function ===============================================================
 	IEnumerator RevealCharacterCoroutine(){
-		//Debug.Log(textComponent.text);
 		Vector3[] vertices = textComponent.mesh.vertices;
 		originalColors = textComponent.mesh.colors;
 		revealArray = new int[vertices.Length];
-
 		int currentVertex = 0;
-		for(int i = 0;i<realText.Length;i++){
-			yield return new WaitForSeconds(0.1f);
-			if(char.IsWhiteSpace(realText.ToCharArray()[i])){
-				//Debug.Log(i);
-				continue;
-				
-				
+		for(int charIndex = 0;charIndex<realText.Length;charIndex++){
+			if(waitArray[charIndex] == 0){
+				yield return new WaitForSeconds(0.04f); //If there was no <t>, wait for this normal time
+			}
+			else{
+				yield return new WaitForSeconds(waitArray[charIndex]); //If there was <t>, wait for the specified time
+			}
+			
+			//Play one shot
+			
+			if(char.IsWhiteSpace(realText.ToCharArray()[charIndex])){
+				continue;	
 			}
 			for(int a = 0; a < 4; a++){
-				//Debug.Log(revealArray.Length + " : " + currentVertex);
 				revealArray[currentVertex] = 1;
 				currentVertex++;
 			}
@@ -390,7 +422,7 @@ public class TextAnimator : MonoBehaviour
 			var verts = textInfo.meshInfo[charInfo.materialReferenceIndex].vertices;
 			for(int j = 0; j<4; ++j){	    	
 				var orig = verts[charInfo.vertexIndex + j];
-				verts[charInfo.vertexIndex + j] = orig + new Vector3(0, Mathf.Sin(Time.time*WaveTime + orig.x*XWaveWeight*0.1f)*WaveSize*textComponent.fontSize,0);
+				verts[charInfo.vertexIndex + j] = orig + new Vector3(0, Mathf.Sin(Time.time*WaveTime + orig.x*XWaveWeight*0.1f)*(1/WaveSize*textComponent.fontSize),0);
 			}
 		}
 	}
@@ -435,7 +467,6 @@ public class TextAnimator : MonoBehaviour
 		for(int i = 0;i <colors.Length;i++){
 			colors[i] = referenceColor;
 		}
-		
 		int vertIndex = 0;
 		for(int i = 0; i<textInfo.characterCount; ++i){
 			var charInfo = textInfo.characterInfo[i];
@@ -445,7 +476,10 @@ public class TextAnimator : MonoBehaviour
 			if(rainbowArray[i] == 0){
 				vertIndex+=4;
 				continue;
-			}			
+			}		
+			if(revealArray[vertIndex] == 0){ //Has the coroutine revealed this yet
+				continue;
+			}
 			var verts = textInfo.meshInfo[charInfo.materialReferenceIndex].vertices;
 			for(int j = 0; j<4; ++j){
 				float hue = Mathf.Lerp(0.03f,0.97f,0.5f*(Mathf.Sin(Time.time*TimeWeight + vertices[vertIndex].x*XColorWeight)+1));
