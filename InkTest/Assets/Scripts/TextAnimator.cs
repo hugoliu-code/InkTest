@@ -10,6 +10,9 @@ This script enables custom richtexts that can apply specific effects.
 Works alongside native TextMeshPro richtext.
 Add this script to an object containing a TextMeshPro text component
 Drag TMP reference to the public "textComponent" variable in the editor.
+
+Surround the desired text to be effected with the appropriate rich text
+Ex: "<w>wave<w>", "<r>rainbow<r>"
 */
 
 
